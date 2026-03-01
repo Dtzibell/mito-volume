@@ -5,16 +5,10 @@ from polars import col as c
 class Cell:
 
     def __init__(self, id: int, parent: Cell | bool,
-                 ph3: pl.LazyFrame, mito: pl.LazyFrame):
+                 ph3_by_cell: dict, mito_by_cell: dict):
         self.id = id
-        self.ph3 = (ph3
-                    .filter(c("Cell_ID") == id)
-                    .collect()
-                    )
-        self.mito = (mito
-                    .filter(c("Cell_ID") == id)
-                    .collect()
-                     )
+        self.ph3 = ph3_by_cell.get((id,), pl.DataFrame())
+        self.mito = mito_by_cell.get((id,), pl.DataFrame())
         self.budding = self.ph3.filter(c("cell_cycle_stage") == "S")
 
         # sets valid flag for cells that have finished a full S phase.
@@ -40,7 +34,7 @@ class Cell:
         self.parent = parent
         self.daughters = []
         for daughter_id in daughters:
-            self.daughters.append(Cell(daughter_id, self, ph3, mito))
+            self.daughters.append(Cell(daughter_id, self, ph3_by_cell, mito_by_cell))
 
     def getParentID(self):
         match self.parent:
