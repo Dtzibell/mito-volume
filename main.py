@@ -44,6 +44,7 @@ if __name__ == "__main__":
                        ])
               .collect()
               )
+    cum_df.write_csv("output.csv")
     partitions = (cum_df
                   .partition_by("Cell_ID", as_dict=True)
                   )
