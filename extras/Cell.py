@@ -8,7 +8,9 @@ class Cell:
     def __init__(self, id: int, parent: Cell | bool,
                  partitions: dict):
         self.id = id
-        self.df = partitions.get((id,), pl.DataFrame())
+        self.df = (partitions
+                   .get((id,), pl.DataFrame())
+                   )
         self.budding = self.df.filter(c("cell_cycle_stage") == "S")
 
         # sets valid flag for cells that have finished a full S phase.
@@ -17,15 +19,20 @@ class Cell:
         else: self.valid = False
         if self.valid and parent:
             self.bud_end = (self.budding
-                                     .filter(c("relationship") == "bud")
-                                     .reverse()
-                                     .unique(c("Cell_ID"))
-                                     )
+                            .lazy() 
+                            .filter(c("relationship") == "bud") 
+                            .reverse()
+                            .unique(c("Cell_ID"))
+                            .collect()
+                            )
 
         daughters = (self.df
-                     .filter((c("relationship") == "mother") & (c("cell_cycle_stage") == "S"))
+                     .lazy()
+                     .filter((c("relationship") == "mother") &
+                             (c("cell_cycle_stage") == "S"))
                      .unique(c("relative_ID"))
-                     .get_column("relative_ID") # intended column Cell_ID
+                     .collect()
+                     .get_column("relative_ID") 
                      )
         self.parent = parent
         self.daughters = []
