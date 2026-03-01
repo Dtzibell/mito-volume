@@ -22,16 +22,27 @@ if __name__ == "__main__":
     start = time()
     config = ConfigParser()
     config.read("config.ini")
-    # ph3csv = Path("/home/dtzi/Desktop/Position_0/Images/Point0000_ChannelmCardinal_Ph-3_Seq0000_s1_acdc_output.csv")
-    # mitocsv = Path("/home/dtzi/Desktop/Position_0/Images/Point0000_ChannelmCardinal_Ph-3_Seq0000_s1_run_num1_mCardinal_ref_ch_acdc_output_mask_mitoacdc_outputentation.csv")
-    ph3csv = Path(select_file("PH3"))
-    mitocsv = Path(select_file("Mito"))
+    ph3csv = Path("/home/dtzi/Desktop/Position_0/Images/Point0000_ChannelmCardinal_Ph-3_Seq0000_s1_acdc_output.csv")
+    mitocsv = Path("/home/dtzi/Desktop/Position_0/Images/Point0000_ChannelmCardinal_Ph-3_Seq0000_s1_run_num1_mCardinal_ref_ch_acdc_output_mask_mitoacdc_outputentation.csv")
+    # ph3csv = Path(select_file("PH3"))
+    # mitocsv = Path(select_file("Mito"))
 
-    ph3 = pl.read_csv(ph3csv)
-    mito = pl.read_csv(mitocsv)
+    ph3 = pl.scan_csv(ph3csv)
+    mito = pl.scan_csv(mitocsv)
     cum_df = (mito
-               .join(ph3, on=["Cell_ID", "frame_i"],
+              .join(ph3, on=["Cell_ID", "frame_i"],
                      how="left") 
+              .select(["Cell_ID",
+                       "frame_i",
+                       "cell_vol_fl_right",
+                       "cell_cycle_stage",
+                       "relative_ID",
+                       "relationship", 
+                       "mCardinal_concentration_dataPrepBkgr_from_vol_fl_3D",
+                       "is_history_known",
+                       "generation_num"
+                       ])
+              .collect()
               )
     partitions = (cum_df
                   .partition_by("Cell_ID", as_dict=True)
