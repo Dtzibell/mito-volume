@@ -1,40 +1,40 @@
 from __future__ import annotations
 import polars as pl
 from polars import col as c
+from polars.exceptions import ColumnNotFoundError
 
 class Cell:
 
     def __init__(self, id: int, parent: Cell | bool,
-                 ph3_by_cell: dict, mito_by_cell: dict):
+                 partitions: dict):
         self.id = id
-        self.ph3 = ph3_by_cell.get((id,), pl.DataFrame())
-        self.mito = mito_by_cell.get((id,), pl.DataFrame())
-        self.budding = self.ph3.filter(c("cell_cycle_stage") == "S")
+        self.df = partitions.get((id,), pl.DataFrame())
+        self.budding = self.df.filter(c("cell_cycle_stage") == "S")
 
         # sets valid flag for cells that have finished a full S phase.
-        if self.budding.height < self.ph3.height:
+        if self.budding.height < self.df.height:
             self.valid = True
         else: self.valid = False
         if self.valid and parent:
-            self.ph3_bud_end = (self.budding
+            self.bud_end = (self.budding
                                      .filter(c("relationship") == "bud")
                                      .reverse()
                                      .unique(c("Cell_ID"))
                                      )
-            self.mito_bud_end = (self.mito
-                                 .filter(c("frame_i") == 
-                                         self.ph3_bud_end[0, "frame_i"])
-                                 )
 
-        daughters = (self.ph3
+        daughters = (self.df
                      .filter((c("relationship") == "mother") & (c("cell_cycle_stage") == "S"))
                      .unique(c("relative_ID"))
-                     .to_series(6) # intended column Cell_ID
+                     .get_column("relative_ID") # intended column Cell_ID
                      )
         self.parent = parent
         self.daughters = []
         for daughter_id in daughters:
-            self.daughters.append(Cell(daughter_id, self, ph3_by_cell, mito_by_cell))
+            try:
+                self.daughters.append(Cell(daughter_id, self, partitions))
+            except ColumnNotFoundError:
+                print(f"{daughter_id} is not present within the mitochondria dataset")
+                continue
 
     def getParentID(self):
         match self.parent:
@@ -45,12 +45,12 @@ class Cell:
                 return -1
 
     def getBudEndFrame(self):
-        return self.ph3_bud_end[0, "frame_i"]
+        return self.bud_end[0, "frame_i"]
 
     def getMotherGeneration(self):
         match self.parent:
             case Cell() as parent:
-                return (parent.ph3
+                return (parent.df
                         .filter(c("frame_i") == self.getBudEndFrame())
                         )[0, "generation_num"]
             case bool():
@@ -59,27 +59,31 @@ class Cell:
 
     def getMitoToVolume(self):
         fluorescence = "mCardinal_concentration_dataPrepBkgr_from_vol_fl_3D"
-        volume = "cell_vol_fl"
-        self.self_ratio = (self.mito_bud_end[0,fluorescence] /
-                           self.ph3_bud_end[0,volume])
+        # Apparently, mito datasets have a cell_vol_fl as well. It probably
+        # refers to the volume of the mitochondria. After right join of ph3
+        # to mito, the ph3 cell_vol_fl is renamed to cell_vol_fl_right
+        volume = "cell_vol_fl_right"
+
+        self.self_ratio = (self.bud_end[0,fluorescence] /
+                           self.bud_end[0,volume])
         return self.self_ratio
 
     def getParentMitoToVolume(self):
         fluorescence = "mCardinal_concentration_dataPrepBkgr_from_vol_fl_3D"
-        volume = "cell_vol_fl"
+        # Apparently, mito datasets have a cell_vol_fl as well. It probably
+        # refers to the volume of the mitochondria. After right join of ph3
+        # to mito, the ph3 cell_vol_fl is renamed to cell_vol_fl_right
+        volume = "cell_vol_fl_right"
         match self.parent:
             case Cell() as parent:
-                parent_mito = (parent.mito
-                               .filter(c("frame_i") == self.getBudEndFrame())
-                               )
-                parent_ph3 = (parent.ph3
+                parent_frame = (parent.df
                               .filter(c("frame_i") == self.getBudEndFrame())
                               )
             case bool():
                 print(f"Cell {self.id} has no ancestor")
                 self.parent_ratio = -1
                 return
-        self.parent_ratio = parent_mito[0, fluorescence] / parent_ph3[0, volume]
+        self.parent_ratio = parent_frame[0, fluorescence] / parent_frame[0, volume]
         return self.parent_ratio
 
     def getSelfToParentRatio(self):

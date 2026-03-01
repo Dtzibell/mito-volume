@@ -22,34 +22,42 @@ if __name__ == "__main__":
     start = time()
     config = ConfigParser()
     config.read("config.ini")
-    ph3csv = Path("/home/dtzi/Desktop/Position_0/Images/Point0000_ChannelmCardinal_Ph-3_Seq0000_s1_acdc_output.csv")
-    mitocsv = Path("/home/dtzi/Desktop/Position_0/Images/Point0000_ChannelmCardinal_Ph-3_Seq0000_s1_run_num1_mCardinal_ref_ch_acdc_output_mask_mitoacdc_outputentation.csv")
-    # ph3csv = Path(select_file("PH3"))
-    # mitocsv = Path(select_file("Mito"))
+    # ph3csv = Path("/home/dtzi/Desktop/Position_0/Images/Point0000_ChannelmCardinal_Ph-3_Seq0000_s1_acdc_output.csv")
+    # mitocsv = Path("/home/dtzi/Desktop/Position_0/Images/Point0000_ChannelmCardinal_Ph-3_Seq0000_s1_run_num1_mCardinal_ref_ch_acdc_output_mask_mitoacdc_outputentation.csv")
+    ph3csv = Path(select_file("PH3"))
+    mitocsv = Path(select_file("Mito"))
 
-    ph3 = pl.scan_csv(ph3csv)
-    ph3_by_cell = ph3.collect().partition_by("Cell_ID", as_dict=True)
-    mito_by_cell = pl.read_csv(mitocsv).partition_by("Cell_ID", as_dict=True)
-
-    cells_ids = ph3.unique("Cell_ID").collect()
-    unknown_history = (ph3
+    ph3 = pl.read_csv(ph3csv)
+    mito = pl.read_csv(mitocsv)
+    cum_df = (mito
+               .join(ph3, on=["Cell_ID", "frame_i"],
+                     how="left") 
+              )
+    partitions = (cum_df
+                  .partition_by("Cell_ID", as_dict=True)
+                  )
+    unknown_history = (cum_df
                       .filter(c("is_history_known") == 0)
                       .unique(c("Cell_ID"))
-                      .collect()
                       )
     founding_mothers = (unknown_history
                       .filter(c("relationship") == "mother")
-                      .to_series(1) # intended column Cell_ID
+                      .get_column("Cell_ID") # intended column Cell_ID
                       )
-    
+
     dct = defaultdict(list)
     for ancestor_id in founding_mothers:
         anc = Cell(ancestor_id, False,
-                   ph3_by_cell,
-                   mito_by_cell)
+                   partitions)
         pair_ancestor_to_descendant(anc, dct)
 
     df = pl.from_dict(dct).sort(c("Bud_ID"))
-    df.write_excel("output.xlsx")
+    df.write_excel(Path(config["PATHS"]["OutputDirectory"]),
+                   freeze_panes=(1,0),
+                   autofit=True,
+                   autofilter=True,
+                   float_precision=5,
+                   header_format={"bold":True}
+                   )
     end = time()
     print(f"Took {round(end-start, 2)} seconds")
