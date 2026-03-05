@@ -15,6 +15,6 @@ def select_file(type: str):
         f"Select {type} data (.csv's)",
         default_dir,
         "CSV files (*.csv)",
-        options = QFileDialog.Option.DontUseNativeDialog,
-        )
+        options=QFileDialog.Option.DontUseNativeDialog,
+    )
     return files[0]
