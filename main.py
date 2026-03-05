@@ -3,8 +3,8 @@ from time import time
 from pathlib import Path
 import polars as pl
 from polars import col as c
-from extras.Cell import Cell
-from extras.utils import select_file
+from modules.Cell import Cell
+from modules.utils import select_file
 from configparser import ConfigParser
 
 def pair_ancestor_to_descendant(cell: Cell, dct: defaultdict, counter: int = 0):
@@ -22,10 +22,10 @@ if __name__ == "__main__":
     start = time()
     config = ConfigParser()
     config.read("config.ini")
-    ph3csv = Path("/home/dtzi/Desktop/Position_0/Images/Point0000_ChannelmCardinal_Ph-3_Seq0000_s1_acdc_output.csv")
-    mitocsv = Path("/home/dtzi/Desktop/Position_0/Images/Point0000_ChannelmCardinal_Ph-3_Seq0000_s1_run_num1_mCardinal_ref_ch_acdc_output_mask_mitoacdc_outputentation.csv")
-    # ph3csv = Path(select_file("PH3"))
-    # mitocsv = Path(select_file("Mito"))
+    # ph3csv = Path("/home/dtzi/Desktop/Position_0/Images/Point0000_ChannelmCardinal_Ph-3_Seq0000_s1_acdc_output.csv")
+    # mitocsv = Path("/home/dtzi/Desktop/Position_0/Images/Point0000_ChannelmCardinal_Ph-3_Seq0000_s1_run_num1_mCardinal_ref_ch_acdc_output_mask_mitoacdc_outputentation.csv")
+    ph3csv = Path(select_file("PH3"))
+    mitocsv = Path(select_file("Mito"))
 
     ph3 = pl.scan_csv(ph3csv)
     mito = pl.scan_csv(mitocsv)
@@ -54,7 +54,7 @@ if __name__ == "__main__":
                       )
     founding_mothers = (unknown_history
                       .filter(c("relationship") == "mother")
-                      .get_column("Cell_ID") # intended column Cell_ID
+                      .get_column("Cell_ID") 
                       )
 
     dct = defaultdict(list)
