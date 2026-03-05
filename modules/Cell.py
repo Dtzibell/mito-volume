@@ -34,7 +34,7 @@ class Cell:
             try:
                 self.daughters.append(Cell(daughter_id, self, partitions))
             except ColumnNotFoundError:
-                print(f"{daughter_id} is not present within the mitochondria dataset")
+                print(f"{int(daughter_id)} is not present within the mitochondria dataset")
                 continue
 
     def getParentID(self):

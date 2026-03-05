@@ -6,6 +6,7 @@ from polars import col as c
 from modules.Cell import Cell
 from modules.utils import select_file
 from configparser import ConfigParser
+import logging
 
 def pair_ancestor_to_descendant(cell: Cell, dct: defaultdict, counter: int = 0):
     for daughter in cell.daughters:
@@ -19,11 +20,14 @@ def pair_ancestor_to_descendant(cell: Cell, dct: defaultdict, counter: int = 0):
         dct["Bud_to_mother"].append(cell.getSelfToParentRatio())
     else:
         if not cell.parent:
-            print(f"ID {cell.id} is a founding mother")
+            logger.info(f"ID {int(cell.id)} is a founding mother")
         if not cell.valid:
-            print(f"ID {cell.id} did not finish its cycle")
+            logger.info(f"ID {int(cell.id)} did not finish its cycle")
 
 if __name__ == "__main__":
+    logger = logging.getLogger(__name__)
+    logging.basicConfig(filename="excluded_cells.log", encoding = "utf-8",
+                        level = logging.DEBUG)
     config = ConfigParser()
     config.read("config.ini")
     # ph3csv = Path("/home/dtzi/Desktop/Position_0/Images/Point0000_ChannelmCardinal_Ph-3_Seq0000_s1_acdc_output.csv")
