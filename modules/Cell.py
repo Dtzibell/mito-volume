@@ -18,13 +18,7 @@ class Cell:
             self.valid = True
         else: self.valid = False
         if self.valid and parent:
-            self.bud_end = (self.budding
-                            .lazy() 
-                            .filter(c("relationship") == "bud") 
-                            .reverse()
-                            .unique(c("Cell_ID"))
-                            .collect()
-                            )
+            self.bud_end = self.budding.filter(c("relationship") == "bud")[-1]
 
         daughters = (self.df
                      .lazy()

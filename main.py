@@ -17,15 +17,20 @@ def pair_ancestor_to_descendant(cell: Cell, dct: defaultdict, counter: int = 0):
         dct["Mito_to_volume_bud"].append(cell.getMitoToVolume())
         dct["Mito_to_volume_mother"].append(cell.getParentMitoToVolume())
         dct["Bud_to_mother"].append(cell.getSelfToParentRatio())
+    else:
+        if not cell.parent:
+            print(f"ID {cell.id} is a founding mother")
+        if not cell.valid:
+            print(f"ID {cell.id} did not finish its cycle")
 
 if __name__ == "__main__":
-    start = time()
     config = ConfigParser()
     config.read("config.ini")
     # ph3csv = Path("/home/dtzi/Desktop/Position_0/Images/Point0000_ChannelmCardinal_Ph-3_Seq0000_s1_acdc_output.csv")
     # mitocsv = Path("/home/dtzi/Desktop/Position_0/Images/Point0000_ChannelmCardinal_Ph-3_Seq0000_s1_run_num1_mCardinal_ref_ch_acdc_output_mask_mitoacdc_outputentation.csv")
     ph3csv = Path(select_file("PH3"))
     mitocsv = Path(select_file("Mito"))
+    start = time()
 
     ph3 = pl.scan_csv(ph3csv)
     mito = pl.scan_csv(mitocsv)
@@ -64,7 +69,7 @@ if __name__ == "__main__":
         pair_ancestor_to_descendant(anc, dct)
 
     df = pl.from_dict(dct).sort(c("Bud_ID"))
-    df.write_excel(Path(config["PATHS"]["OutputDirectory"]),
+    df.write_excel(Path(config["PATHS"]["OutputDirectory"]) / "output.xlsx",
                    freeze_panes=(1,0),
                    autofit=True,
                    autofilter=True,
