@@ -90,8 +90,10 @@ if __name__ == "__main__":
         pair_ancestor_to_descendant(anc, dct)
 
     df = pl.from_dict(dct).sort(c("Bud_ID"))
+    output_dir = Path(config["PATHS"]["OutputDirectory"])
+    output_dir.mkdir(parents=True, exist_ok=True)
     df.write_excel(
-        Path(config["PATHS"]["OutputDirectory"]) / "output.xlsx",
+        output_dir / "output.xlsx",
         freeze_panes=(1, 0),
         autofit=True,
         autofilter=True,
