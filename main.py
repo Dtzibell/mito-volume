@@ -10,25 +10,24 @@ import logging
 import sys
 
 
-def pair_ancestor_to_descendant(cell: Cell, dct: defaultdict, counter: int = 0):
-    for daughter in cell.daughters:
-        pair_ancestor_to_descendant(daughter, dct, counter)
-    if cell.parent and cell.valid:
-        dct["Bud_ID"].append(int(cell.id))
-        dct["Mother_ID"].append(int(cell.getParentID()))
-        dct["Mother_generation"].append(int(cell.getMotherGeneration()))
-        dct["Mito_to_volume_bud"].append(cell.getMitoToVolume())
-        dct["Mito_to_volume_mother"].append(cell.getParentMitoToVolume())
-        dct["Bud_to_mother"].append(cell.getSelfToParentRatio())
-        dct["Size_at_end_of_S"].append(cell.getSizeAtEndOfS())
-        dct["G1_length"].append(cell.getLengthOfG1())
-        dct["S_length"].append(cell.getLengthOfS())
-        dct["Cell_cycle_length"].append(cell.getCellCycleLength())
-    else:
-        if not cell.parent:
-            logger.info(f"Founding mother: ID {int(cell.id)}")
-        if not cell.valid:
-            logger.info(f"Unfinished cycle: ID {int(cell.id)}")
+def pair_ancestor_to_descendants(cell, dct):
+    for (i, daughter) in enumerate(cell.daughters):
+        pair_ancestor_to_descendants(daughter, dct)
+        dct["Bud_ID"].append(int(daughter.id))
+        dct["Mother_ID"].append(int(cell.id))
+        dct["Mother_generation"].append(i)
+        dct["Mito_to_volume_bud"].append(daughter.getMitoToVolumeBud())
+        dct["Mito_to_volume_mother"].append(cell.getMitoToVolumeGen(i))
+        dct["Bud_to_mother"].append(daughter.getMitoToVolumeBud() / cell.getMitoToVolumeGen(i))
+        dct["Size_at_end_of_S"].append(cell.getSizeAtEndOfBud())
+        dct["G1_length"].append(cell.getLengthOfG1(i))
+        dct["S_length"].append(cell.getLengthOfS(i))
+        dct["Cell_cycle_length"].append(cell.getCellCycleLength(i))
+    # else:
+    #     if not cell.parent:
+    #         logger.info(f"Founding mother: ID {int(cell.id)}")
+    #     if not cell.valid:
+    #         logger.info(f"Unfinished cycle: ID {int(cell.id)}")
 
 
 if __name__ == "__main__":
@@ -42,10 +41,14 @@ if __name__ == "__main__":
     )
     config = ConfigParser()
     config.read("config.ini")
-    # ph3csv = Path("/home/dtzi/Desktop/Position_0/Images/Point0000_ChannelmCardinal_Ph-3_Seq0000_s1_acdc_output.csv")
-    # mitocsv = Path("/home/dtzi/Desktop/Position_0/Images/Point0000_ChannelmCardinal_Ph-3_Seq0000_s1_run_num1_mCardinal_ref_ch_acdc_output_mask_mitoacdc_outputentation.csv")
-    ph3csv = Path(select_file("PH3"))
-    mitocsv = Path(select_file("Mito"))
+    ph3csv = Path(
+        "/home/tauras/Desktop/Point0000_ChannelmCardinal_Ph-3_Seq0000_s1_acdc_output.csv"
+    )
+    mitocsv = Path(
+        "/home/tauras/Desktop/Point0000_ChannelmCardinal_Ph-3_Seq0000_s1_run_num1_mCardinal_ref_ch_acdc_output_mask_mitoacdc_outputentation.csv"
+    )
+    # ph3csv = Path(select_file("PH3"))
+    # mitocsv = Path(select_file("Mito"))
     start = time()
 
     ph3 = pl.scan_csv(ph3csv)
@@ -63,9 +66,11 @@ if __name__ == "__main__":
                 "mCardinal_concentration_dataPrepBkgr_from_vol_fl_3D",
                 "is_history_known",
                 "generation_num",
-                "time_minutes"
+                "time_minutes",
+                "will_divide",
             ]
         )
+        .filter(c("will_divide") == 1)
         .set_sorted("frame_i")
         .collect()
     )
@@ -79,15 +84,19 @@ if __name__ == "__main__":
             logging.error("could not determine imaging rate")
             sys.exit(1)
 
-    unknown_history = cum_df.filter(c("is_history_known") == 0).unique(c("Cell_ID"))
-    founding_mothers = unknown_history.filter(c("relationship") == "mother").get_column(
+    unknown_history_cells = cum_df.filter(c("is_history_known") == 0).unique("Cell_ID")[
         "Cell_ID"
-    )
+    ]
+    founding_mothers = cum_df.filter(
+        (c("is_history_known") == 1)
+        & (c("relative_ID").is_in(unknown_history_cells.implode()))
+    )["Cell_ID"].unique()
+    print(founding_mothers)
 
     dct = defaultdict(list)
-    for ancestor_id in founding_mothers:
-        anc = Cell(ancestor_id, False, partitions, imaging_rate)
-        pair_ancestor_to_descendant(anc, dct)
+    for id in founding_mothers:
+        cell = Cell(id, partitions, imaging_rate)
+        pair_ancestor_to_descendants(cell, dct)
 
     df = pl.from_dict(dct).sort(c("Bud_ID"))
     output_dir = Path(config["PATHS"]["OutputDirectory"])
