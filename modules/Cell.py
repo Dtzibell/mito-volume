@@ -37,10 +37,6 @@ class Cell:
         # to mito, the ph3 cell_vol_fl is renamed to cell_vol_fl_right
         volume = "cell_vol_fl_right"
         gen_end = self.df.filter(c("generation_num") == gen + 1)[-1]
-        if self.id == 3:
-            print(gen_end)
-            print(self.generations[gen])
-            print(gen_end[0, fluorescence] , gen_end[0, volume])
         return gen_end[0, fluorescence] / gen_end[0, volume]
 
     def getSizeAtEndOfBud(self):

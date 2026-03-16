@@ -23,32 +23,19 @@ def pair_ancestor_to_descendants(cell, dct):
         dct["G1_length"].append(cell.getLengthOfG1(i))
         dct["S_length"].append(cell.getLengthOfS(i))
         dct["Cell_cycle_length"].append(cell.getCellCycleLength(i))
-    # else:
-    #     if not cell.parent:
-    #         logger.info(f"Founding mother: ID {int(cell.id)}")
-    #     if not cell.valid:
-    #         logger.info(f"Unfinished cycle: ID {int(cell.id)}")
 
 
 if __name__ == "__main__":
-    logger = logging.getLogger(__name__)
-    log_file = "excluded_cells.log"
-    logging.basicConfig(
-        filename="excluded_cells.log",
-        filemode="w",
-        encoding="utf-8",
-        level=logging.DEBUG,
-    )
     config = ConfigParser()
     config.read("config.ini")
-    ph3csv = Path(
-        "/home/tauras/Desktop/Point0000_ChannelmCardinal_Ph-3_Seq0000_s1_acdc_output.csv"
-    )
-    mitocsv = Path(
-        "/home/tauras/Desktop/Point0000_ChannelmCardinal_Ph-3_Seq0000_s1_run_num1_mCardinal_ref_ch_acdc_output_mask_mitoacdc_outputentation.csv"
-    )
-    # ph3csv = Path(select_file("PH3"))
-    # mitocsv = Path(select_file("Mito"))
+    # ph3csv = Path(
+    #     "/home/tauras/Desktop/Point0000_ChannelmCardinal_Ph-3_Seq0000_s1_acdc_output.csv"
+    # )
+    # mitocsv = Path(
+    #     "/home/tauras/Desktop/Point0000_ChannelmCardinal_Ph-3_Seq0000_s1_run_num1_mCardinal_ref_ch_acdc_output_mask_mitoacdc_outputentation.csv"
+    # )
+    ph3csv = Path(select_file("PH3"))
+    mitocsv = Path(select_file("Mito"))
     start = time()
 
     ph3 = pl.scan_csv(ph3csv)
@@ -91,7 +78,6 @@ if __name__ == "__main__":
         (c("is_history_known") == 1)
         & (c("relative_ID").is_in(unknown_history_cells.implode()))
     )["Cell_ID"].unique()
-    print(founding_mothers)
 
     dct = defaultdict(list)
     for id in founding_mothers:
@@ -111,4 +97,3 @@ if __name__ == "__main__":
     )
     end = time()
     print(f"Took {round(end - start, 2)} seconds")
-    print(f"Excluded cells documented in: {log_file}")
